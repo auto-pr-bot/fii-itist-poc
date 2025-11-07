@@ -5,8 +5,8 @@ codeuri = "/home/stefan/git/fii-itist-poc/hello_world"
 runtime = "python3.13"
 architecture = "x86_64"
 handler = "app.lambda_handler"
-source_hash = "0ad810369cac3511cefb597399f5d391570fe5857a05a93857b1c48c2fd5affe"
-manifest_hash = ""
+source_hash = "c7727a6e0760ee6e3be74c0001462e9c72e95e1c8ad59b126b97918d1d3f79b2"
+manifest_hash = "6686853da3491a56c98917cc5c4ddea2"
 packagetype = "Zip"
 functions = ["ProxyFunction"]
 
