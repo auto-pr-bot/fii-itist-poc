@@ -52,3 +52,70 @@ sam local start-api
 # Access endpoints
 curl http://localhost:3000/
 ```
+
+## Running tests
+
+This project uses pytest for tests. The test dependencies are listed in tests/requirements.txt.
+
+Prerequisites:
+- Python 3.8+ (the project uses Python 3.12 for Lambda, but tests run with any supported Python 3)
+- pip
+- (Optional) virtualenv or venv to isolate dependencies
+- AWS credentials/config if running integration tests that interact with AWS services
+
+Install test dependencies (recommended inside a virtual environment)
+
+Unix / macOS:
+
+```bash
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install test dependencies
+pip install -r tests/requirements.txt
+```
+
+Windows (PowerShell):
+
+```powershell
+py -3 -m venv .venv
+. .\.venv\Scripts\Activate.ps1
+
+pip install -r tests/requirements.txt
+```
+
+Run all tests:
+
+```bash
+pytest
+```
+
+Run unit tests only:
+
+```bash
+pytest tests/unit
+```
+
+Run integration tests only:
+
+```bash
+pytest tests/integration
+```
+
+Notes:
+- Integration tests may require AWS credentials (for example via environment variables, AWS CLI configuration, or an AWS profile). If they interact with a locally running API, start the local API before running integration tests:
+
+```bash
+sam local start-api
+```
+
+- To run a single test function:
+
+```bash
+pytest path/to/test_file.py::test_function_name
+```
+
+- You can pass standard pytest options as needed (e.g., -q for quiet, -k to filter by substring, -x to stop after first failure).
+
+If you encounter dependency or environment issues, ensure the virtual environment is activated and the test dependencies from tests/requirements.txt are installed.
