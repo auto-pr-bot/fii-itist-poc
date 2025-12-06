@@ -13,8 +13,6 @@ A serverless web application built for a live conference ([Fii IT-ist](https://f
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture-diagram.png)
-
 Built using AWS Serverless technologies:
 
 - **AWS Lambda** (Python 3.12): Request routing and business logic
