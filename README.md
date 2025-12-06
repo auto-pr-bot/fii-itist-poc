@@ -1,121 +1,177 @@
 # Conference Participant Registration & Display System
 
-A serverless web application built for a live conference ([Fii IT-ist](https://fii-itist.asii.ro/)), enabling real-time participant registration with an engaging visual display. The system collects participant information through a web form and displays registered names on a dynamic "wall of fame" that updates in real-time during the event.
+A small serverless web application created for a live conference (Fii IT-ist). It enables real-time participant registration via a simple web form and displays registered names on a dynamic "wall of fame" that updates periodically. The system collects participant name, detects phone model from the User-Agent, and records the client's IP address. It uses AWS serverless primitives for scalability and minimal operational overhead.
 
-## Key Features
+Contents
+- What this project does
+- Key features
+- Architecture & components
+- API endpoints
+- Local development
+- Build & deployment
+- Configuration & environment
+- Running tests
+- Notes & troubleshooting
 
-- **User Registration Form**: Clean, mobile-responsive interface for attendees to submit their names
-- **Dynamic Results Display**: Kahoot-style animated wall of fame with real-time updates
-- **Real-time Polling**: Results page auto-refreshes every 5 seconds to show new participants
-- **Data Collection**: Captures participant name, phone model (via User-Agent parsing), and IP address
-- **Serverless Architecture**: Fully scalable AWS infrastructure with zero server management
-- **Dual Storage**: SQS queue for event processing + DynamoDB for persistent storage
+What this project does
+- Presents a simple, mobile-friendly registration form at the root URL.
+- Accepts form submissions (name) and records metadata (phone model, client IP).
+- Pushes form events to an SQS queue and stores request records in DynamoDB.
+- Displays a stylized "participants wall" page that polls periodically for changes (mocked locally).
 
-## Architecture
+Key Features
+- Simple, responsive registration form
+- Animated "wall of fame" results page
+- Lightweight User-Agent parsing to infer phone model
+- Captures client IP address
+- Uses Amazon SQS for event processing and DynamoDB for persistent storage
+- Packaged and deployed using AWS SAM (Serverless Application Model)
 
-Built using AWS Serverless technologies:
+Architecture & components
+- AWS Lambda (Python 3.12): request routing and handlers (hello_world/app.py)
+- Amazon API Gateway: REST endpoints (configured via template.yaml)
+- Amazon SQS: queue for processing submissions
+- Amazon DynamoDB: persistent storage for requests / participants
+- AWS SAM: infrastructure-as-code and local testing support
 
-- **AWS Lambda** (Python 3.12): Request routing and business logic
-- **API Gateway**: RESTful API endpoints
-- **Amazon SQS**: Message queue for asynchronous event processing
-- **Amazon DynamoDB**: NoSQL database for participant data storage
-- **AWS SAM**: Infrastructure as Code for deployment
+Project layout (important files)
+- hello_world/ : Lambda application code and templates
+  - app.py — main request router (lambda_handler)
+  - handlers/ — individual endpoint handlers (home, form, results, default)
+  - templates/ — HTML for form and results
+  - utils/ — helpers (request parsing, UA phone detection)
+  - aws_clients.py / services.py — shared boto3 clients (sqs, dynamodb)
+- template.yaml — SAM template (defines Lambda, SQS, DynamoDB)
+- samconfig.toml — optional SAM CLI config for deployment
+- tests/ — tests and test dependencies
+- README.md — this file
 
-## API Endpoints
-
+API Endpoints
 | Method | Endpoint   | Description                                    |
 | ------ | ---------- | ---------------------------------------------- |
-| `GET`  | `/`        | Displays participant registration form         |
-| `POST` | `/form`    | Processes form submission, queues data to SQS  |
-| `GET`  | `/results` | Shows animated wall of registered participants |
+| GET    | /          | Serve the participant registration form        |
+| POST   | /form      | Accept form submission, queue data to SQS      |
+| GET    | /results   | Serve the animated wall-of-fame results page   |
+| *      | other      | Catch-all handler records requests to SQS/DynamoDB |
 
-## Deployment
+Local development
 
-### Build and Deploy
+Requirements
+- Docker (recommended for `sam build --use-container` and `sam local` commands)
+- AWS SAM CLI (latest stable is recommended)
+- Python 3.8+ for local development, but Lambda runtime is configured as Python 3.12 in template.yaml
+- pip (or poetry/pipenv) to install dependencies
+- Optional: AWS CLI & credentials if you interact with real AWS resources
 
-```bash
-# Build the application
-sam build --use-container
-
-# Deploy with guided configuration
-sam deploy --guided
-```
-
-### Local Development
-
-Run the API locally for testing:
-
-```bash
-# Start local API server
-sam local start-api
-
-# Access endpoints
-curl http://localhost:3000/
-```
-
-## Running tests
-
-This project uses pytest for tests. The test dependencies are listed in tests/requirements.txt.
-
-Prerequisites:
-- Python 3.8+ (the project uses Python 3.12 for Lambda, but tests run with any supported Python 3)
-- pip
-- (Optional) virtualenv or venv to isolate dependencies
-- AWS credentials/config if running integration tests that interact with AWS services
-
-Install test dependencies (recommended inside a virtual environment)
+Install runtime/test dependencies
+It's recommended to use a virtual environment.
 
 Unix / macOS:
-
 ```bash
-# Create and activate a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install test dependencies
+pip install -r hello_world/requirements.txt
 pip install -r tests/requirements.txt
 ```
 
 Windows (PowerShell):
-
 ```powershell
 py -3 -m venv .venv
 . .\.venv\Scripts\Activate.ps1
-
+pip install -r hello_world/requirements.txt
 pip install -r tests/requirements.txt
 ```
 
-Run all tests:
+Run the API locally
+You can run the API locally using the SAM CLI. This emulates API Gateway + Lambda on your machine:
 
+```bash
+# Build function artifacts
+sam build
+
+# Start the API locally (default port 3000)
+sam local start-api
+```
+
+Then open:
+- Registration form: http://localhost:3000/
+- Results page: http://localhost:3000/results
+
+Notes for local testing:
+- The results page currently uses mock data (see hello_world/templates/results.html). When backend endpoints are implemented/available, update the frontend to point to the real endpoint.
+- If you need to invoke the function directly with a sample event, you can use:
+  sam local invoke ProxyFunction -e events/get-root.json
+
+Build & deploy
+
+Build
+```bash
+sam build
+# or, if you need a containerized build for native binaries:
+sam build --use-container
+```
+
+Deploy (guided)
+```bash
+sam deploy --guided
+```
+
+During `sam deploy --guided`, you'll be prompted for a stack name, AWS region, and whether you want to save the configuration to samconfig.toml. The template requires IAM capabilities to create resources, so respond "y" when asked for CAPABILITY_IAM.
+
+After deployment, outputs include:
+- ApiGatewayUrl — base URL for the API
+- SQSQueueUrl — URL of the created queue
+- DynamoDBTable — table name used for participants/requests
+
+Configuration & environment
+The Lambda function expects the following environment variables, which are set in the SAM template on deployment:
+- SQS_QUEUE_URL — URL of the SQS queue (set by the stack)
+- DYNAMODB_TABLE — DynamoDB table name (set by the stack)
+
+When testing locally, you can either:
+- Use the resources created in an AWS account (requires valid AWS credentials), or
+- Mock/patch environment variables and AWS clients in your tests.
+
+If you invoke functions locally with `sam local` and you want to access real AWS services from your local environment, ensure your AWS credentials are configured (via the AWS CLI, environment variables, or another supported method).
+
+Running tests
+
+Install test dependencies:
+- See the "Install runtime/test dependencies" section above.
+
+Run all tests:
 ```bash
 pytest
 ```
 
 Run unit tests only:
-
 ```bash
 pytest tests/unit
 ```
 
 Run integration tests only:
-
 ```bash
 pytest tests/integration
 ```
 
-Notes:
-- Integration tests may require AWS credentials (for example via environment variables, AWS CLI configuration, or an AWS profile). If they interact with a locally running API, start the local API before running integration tests:
+Notes about tests:
+- Integration tests may require access to AWS resources. Set AWS credentials appropriately or run integration tests against a local mock if implemented.
+- If integration tests target your locally-running API, start the API before running them:
+  sam local start-api
 
-```bash
-sam local start-api
-```
+Common troubleshooting & tips
+- Permission errors on deploy: ensure you have sufficient IAM permissions and that CAPABILITY_IAM is accepted during deployment.
+- Local build failures: try `sam build --use-container` to match the Lambda runtime environment.
+- Port conflicts when running `sam local start-api`: the default port is 3000. Use `--port` to change it.
+- Lambda runtime mismatch: this template is configured to use Python 3.12. Ensure your code is compatible with that version when deploying to AWS. Locally you can use a different Python version for development, but for binary/native dependencies you should build within a container matching the runtime.
 
-- To run a single test function:
+Contributing
+- Feel free to open issues or pull requests.
+- Keep changes small and focus on clarity and test coverage.
+- If adding new dependencies, update hello_world/requirements.txt and document the reason in the PR.
 
-```bash
-pytest path/to/test_file.py::test_function_name
-```
+License & acknowledgements
+- This repository is a lightweight demo for an event registration and display system. Adapt and reuse as needed.
+- Built with AWS SAM and inspired by simple live polling/visualization patterns.
 
-- You can pass standard pytest options as needed (e.g., -q for quiet, -k to filter by substring, -x to stop after first failure).
-
-If you encounter dependency or environment issues, ensure the virtual environment is activated and the test dependencies from tests/requirements.txt are installed.
+If you need any updates to the README (more deployment details, architecture diagram, or example events), tell me what you'd like added and I'll update this file.
